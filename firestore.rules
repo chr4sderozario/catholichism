@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Document ID: {userId}
+    // Fields: uid, displayName, email, photoURL, bio, role
+    //
+    // Collection: prayerRequests
+    // Document ID: {requestId}
+    // Fields: uid, authorName, isAnonymous, content, prayersCount, createdAt
+    //
+    // Collection: posts
+    // Document ID: {postId}
+    // Fields: uid, authorName, content, category, likesCount, createdAt
+    //
+    // Collection: users/{userId}/favorites
+    // Document ID: {favoriteId}
+    // Fields: uid, verseText, reference, createdAt
+    //
+    // Collection: users/{userId}/claimedRewards
+    // Document ID: {rewardId}
+    // Fields: uid, rewardType, content, reference, cost, createdAt
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'biblePoints']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.biblePoints is number &&
+             (!('role' in data) || data.role in ['user', 'admin']);
+    }
+
+    function isValidPrayerRequest(data) {
+      return data.keys().hasAll(['uid', 'content', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 2000 &&
+             data.prayersCount is number &&
+             data.isAnonymous is bool;
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll(['uid', 'content', 'category', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 5000 &&
+             data.category in ['Faith', 'Life', 'Questions', 'Testimony'] &&
+             data.likesCount is number;
+    }
+
+    function isValidFavorite(data) {
+      return data.keys().hasAll(['uid', 'verseText', 'reference', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.verseText is string && data.reference is string;
+    }
+
+    function isValidClaimedReward(data) {
+      return data.keys().hasAll(['uid', 'rewardType', 'content', 'cost', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.rewardType in ['verse', 'quote'] &&
+             data.content is string && data.cost is number;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "johnchristianorozario@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    match /prayerRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPrayerRequest(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (isDocOwner() && isValidPrayerRequest(request.resource.data)) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prayersCount']) && request.resource.data.prayersCount == resource.data.prayersCount + 1)
+      );
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPost(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (isDocOwner() && isValidPost(request.resource.data)) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount']) && (request.resource.data.likesCount == resource.data.likesCount + 1 || request.resource.data.likesCount == resource.data.likesCount - 1))
+      );
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /users/{userId}/favorites/{favoriteId} {
+      allow read, write: if isOwner(userId) && isValidFavorite(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    match /users/{userId}/claimedRewards/{rewardId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidClaimedReward(request.resource.data);
+    }
+  }
+}

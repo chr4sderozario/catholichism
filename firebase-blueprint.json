@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "nickname": { "type": "string" },
+        "favoriteBook": { "type": "string" },
+        "biblePoints": { "type": "number" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "isOtpVerified": { "type": "boolean" }
+      },
+      "required": ["uid", "email", "biblePoints"]
+    },
+    "PrayerRequest": {
+      "title": "Prayer Request",
+      "description": "A request for prayers from the community",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "authorName": { "type": "string" },
+        "isAnonymous": { "type": "boolean" },
+        "content": { "type": "string" },
+        "prayersCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "content", "createdAt"]
+    },
+    "Post": {
+      "title": "Community Post",
+      "description": "A post in the community section",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string", "enum": ["Faith", "Life", "Questions", "Testimony"] },
+        "likesCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "content", "category", "createdAt"]
+    },
+    "FavoriteVerse": {
+      "title": "Favorite Verse",
+      "description": "A verse saved by a user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "verseText": { "type": "string" },
+        "reference": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "verseText", "reference", "createdAt"]
+    },
+    "ClaimedReward": {
+      "title": "Claimed Reward",
+      "description": "A reward claimed by a user using Bible Points",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "rewardType": { "type": "string", "enum": ["verse", "quote"] },
+        "content": { "type": "string" },
+        "reference": { "type": "string" },
+        "cost": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "rewardType", "content", "cost", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/prayerRequests/{requestId}": {
+      "schema": "PrayerRequest",
+      "description": "Prayer requests"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Community posts"
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": "FavoriteVerse",
+      "description": "User's favorite verses"
+    },
+    "/users/{userId}/claimedRewards/{rewardId}": {
+      "schema": "ClaimedReward",
+      "description": "User's claimed rewards"
+    }
+  }
+}

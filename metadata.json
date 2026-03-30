@@ -1,0 +1,5 @@
+{
+  "name": "Sanctuary: Your Faith Journey",
+  "description": "A comprehensive spiritual companion for prayer, community, and growth. Features include a virtual candle wall, prayer chains, church finder, and daily faith tracking.",
+  "requestFramePermissions": ["geolocation"]
+}
