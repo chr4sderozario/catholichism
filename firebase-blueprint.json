@@ -7,16 +7,15 @@
       "properties": {
         "uid": { "type": "string" },
         "displayName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
+        "email": { "type": "string" },
         "photoURL": { "type": "string" },
         "bio": { "type": "string" },
         "nickname": { "type": "string" },
         "favoriteBook": { "type": "string" },
-        "biblePoints": { "type": "number" },
-        "role": { "type": "string", "enum": ["user", "admin"] },
-        "isOtpVerified": { "type": "boolean" }
+        "points": { "type": "number" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
       },
-      "required": ["uid", "email", "biblePoints"]
+      "required": ["uid", "email", "points"]
     },
     "PrayerRequest": {
       "title": "Prayer Request",

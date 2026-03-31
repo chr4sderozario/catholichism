@@ -41,14 +41,14 @@ service cloud.firestore {
     }
 
     function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+      return email is string && email.size() > 0;
     }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'biblePoints']) &&
+      return data.keys().hasAll(['uid', 'email', 'points']) &&
              data.uid is string && data.uid.size() > 0 &&
              data.email is string && isValidEmail(data.email) &&
-             data.biblePoints is number &&
+             data.points is number &&
              (!('role' in data) || data.role in ['user', 'admin']);
     }
 
@@ -84,7 +84,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "johnchristianorozario@gmail.com" && request.auth.token.email_verified == true));
+         request.auth.token.email == "johnchristianorozario@gmail.com");
     }
 
     // ===============================================================

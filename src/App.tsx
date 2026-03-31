@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db } from './lib/firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Features
@@ -53,6 +53,7 @@ import SilentMode from './features/SilentMode';
 import PrayerJournal from './features/PrayerJournal';
 import GlobalPrayerMap from './features/GlobalPrayerMap';
 import PeaceMode from './features/PeaceMode';
+import Auth from './components/Auth';
 
 type View = 
   | 'dashboard' 
@@ -83,8 +84,6 @@ export default function App() {
   const [isPeaceMode, setIsPeaceMode] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const [hasAttemptedAutoGuest, setHasAttemptedAutoGuest] = useState(false);
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -94,65 +93,23 @@ export default function App() {
         if (!userDoc.exists()) {
           await setDoc(userRef, {
             uid: user.uid,
-            displayName: user.displayName || 'Guest User',
-            email: user.email || 'guest@sanctuary.app',
-            photoURL: user.photoURL || `https://ui-avatars.com/api/?name=Guest+User&background=random`,
+            displayName: user.displayName || 'Faithful Soul',
+            email: user.email,
+            photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'User'}&background=random`,
             streakCount: 0,
             totalPrayers: 0,
             totalVerses: 0,
             points: 0,
-            createdAt: new Date(),
-            isAnonymous: user.isAnonymous
+            createdAt: new Date()
           });
         }
       } else {
         setUser(null);
-        // Auto-guest login if not logged in and haven't attempted yet
-        if (!hasAttemptedAutoGuest) {
-          setHasAttemptedAutoGuest(true);
-          signInAnonymously(auth).catch((error) => {
-            console.error("Auto-guest login failed:", error);
-            // If it fails, we just stay on the login screen which is handled by !user check
-          });
-        }
       }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [hasAttemptedAutoGuest]);
-
-  const [loginError, setLoginError] = useState<string | null>(null);
-
-  const login = async () => {
-    setLoginError(null);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        setLoginError("The sign-in window was closed. Please try again.");
-      } else if (error.code === 'auth/popup-blocked') {
-        setLoginError("The sign-in popup was blocked by your browser. Please allow popups for this site.");
-      } else {
-        setLoginError("Login failed. Please check your connection and try again.");
-        console.error("Login failed:", error);
-      }
-    }
-  };
-
-  const loginAsGuest = async () => {
-    setLoginError(null);
-    try {
-      await signInAnonymously(auth);
-    } catch (error: any) {
-      if (error.code === 'auth/admin-restricted-operation') {
-        setLoginError("Guest mode (Anonymous Auth) is not enabled. Please enable it in the Firebase Console: https://console.firebase.google.com/project/gen-lang-client-0869947900/authentication/providers");
-      } else {
-        setLoginError("Guest login failed. Please try again.");
-      }
-      console.error("Guest login failed:", error);
-    }
-  };
+  }, []);
 
   const logout = () => signOut(auth);
 
@@ -171,71 +128,7 @@ export default function App() {
   }
 
   if (!user) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-background p-6">
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="max-w-md w-full text-center space-y-8"
-        >
-          <div className="space-y-4">
-            <h1 className="text-6xl font-serif text-primary">Sanctuary</h1>
-            <p className="text-xl text-muted-foreground font-cormorant italic">
-              Your peaceful companion for a deeper faith journey.
-            </p>
-          </div>
-          
-          <div className="bg-white p-10 rounded-[48px] border border-border shadow-2xl space-y-8">
-            <div className="w-20 h-20 bg-primary/10 rounded-[32px] flex items-center justify-center mx-auto shadow-lg shadow-primary/5">
-              <ShieldCheck className="w-10 h-10 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-serif">Welcome to Sanctuary</h2>
-              <p className="text-sm text-muted-foreground">Your peaceful companion for a deeper faith journey.</p>
-            </div>
-            
-            {loginError && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold uppercase tracking-widest leading-relaxed"
-              >
-                {loginError}
-              </motion.div>
-            )}
-
-            <button 
-              onClick={login}
-              className="w-full py-5 bg-primary text-white rounded-full font-bold text-sm uppercase tracking-widest shadow-xl shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-3"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-              Continue with Google
-            </button>
-
-            <div className="relative py-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-
-            <button 
-              onClick={loginAsGuest}
-              className="w-full py-5 bg-white text-primary border-2 border-primary/20 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-primary/5 transition-all flex items-center justify-center gap-3"
-            >
-              <Users className="w-5 h-5" />
-              Continue as Guest
-            </button>
-          </div>
-          
-          <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">
-            Join 12,456 others on their journey
-          </p>
-        </motion.div>
-      </div>
-    );
+    return <Auth />;
   }
 
   if (isPeaceMode) {
@@ -330,15 +223,6 @@ export default function App() {
             </div>
 
             <div className="p-6 border-t border-border bg-secondary/20 space-y-4">
-              {user?.isAnonymous && (
-                <button 
-                  onClick={login}
-                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                >
-                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
-                  Sign In with Google
-                </button>
-              )}
               <div className="flex items-center gap-4 p-4 bg-white rounded-3xl border border-border shadow-sm">
                 <img src={user?.photoURL || ''} className="w-10 h-10 rounded-2xl shadow-sm" alt={user?.displayName || ''} />
                 <div className="flex-1 min-w-0">
